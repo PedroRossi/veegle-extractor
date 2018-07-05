@@ -15,26 +15,35 @@ class Extractor:
     def __get_content(self):
         self.name = self.soup.title.string
         divs = self.soup.find_all('div')
+        [s.extract() for s in self.soup('script')]
+        [s.extract() for s in self.soup('a')]
+        [s.extract() for s in self.soup('style')]
         found_ingredients = False
         found_steps = False
+        regex_ingredients = re.compile('(Ingredientes)')
+        regex_steps = re.compile('(Modo de preparo)|(Instruções)|(Passos a seguir)')
         for div in divs:
             if found_ingredients and found_steps:
                 break
-            ingredients_div = div.find(text=re.compile('(Ingredientes)'))
-            steps_div = div.find(text=re.compile('(Modo de preparo)|(Instruções)|(passos a seguir)'))
+            ingredients_div = div.find(text=regex_ingredients)
+            steps_div = div.find(text=regex_steps)
+            aux = div.text
             if ingredients_div and steps_div:
                 found_ingredients = True
                 found_steps = True
-                self.ingredients = div.text
-            elif ingredients_div and not found_ingredients:
+                self.ingredients = aux[regex_ingredients.search(aux).start():regex_steps.search(aux).start()]
+                self.steps = aux[regex_steps.search(aux).start():]
+            if ingredients_div and not found_ingredients:
                 found_ingredients = True
-                self.ingredients = div.text
-            elif steps_div and not found_steps:
+                self.ingredients = aux[regex_ingredients.search(aux).start():]
+            if steps_div and not found_steps:
                 found_steps = True
-                self.steps = div.text
+                self.steps = aux[regex_steps.search(aux).start():]
         self.file.close()
         if not found_ingredients:
             raise Exception('ingredients not found')
+        if not found_steps:
+            raise Exception('steps not found')
 
     def to_dicitonary(self):
         data = {
